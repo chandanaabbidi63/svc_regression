@@ -1,53 +1,57 @@
+# ---------------------------------------------------
+# IMPORT LIBRARIES
+# ---------------------------------------------------
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
- 
+
 from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
     confusion_matrix
 )
-from sklearn import tree
- 
+
 # ---------------------------------------------------
 # PAGE CONFIGURATION
 # ---------------------------------------------------
- 
+
 st.set_page_config(
-    page_title="Breast Cancer Prediction",
+    page_title="Breast Cancer Prediction - SVC",
     page_icon="🩺",
     layout="wide"
 )
- 
+
 # ---------------------------------------------------
 # CUSTOM CSS
 # ---------------------------------------------------
- 
+
 st.markdown("""
 <style>
- 
+
 .main {
     background-color: #f5f7fa;
 }
- 
+
 .title {
     font-size: 42px;
     font-weight: bold;
     color: #0e4c92;
     text-align: center;
 }
- 
+
 .subtitle {
     font-size: 18px;
     text-align: center;
     color: gray;
 }
- 
+
 .stButton>button {
     background-color: #0e4c92;
     color: white;
@@ -57,289 +61,279 @@ st.markdown("""
     font-size: 18px;
     font-weight: bold;
 }
- 
+
 </style>
 """, unsafe_allow_html=True)
- 
+
 # ---------------------------------------------------
 # TITLE
 # ---------------------------------------------------
- 
+
 st.markdown(
     '<p class="title">🩺 Breast Cancer Prediction System</p>',
     unsafe_allow_html=True
 )
- 
+
 st.markdown(
-    '<p class="subtitle">Decision Tree Classification using Machine Learning</p>',
+    '<p class="subtitle">Support Vector Classification (SVC) using Machine Learning</p>',
     unsafe_allow_html=True
 )
- 
+
 st.markdown("---")
- 
+
 # ---------------------------------------------------
 # LOAD DATASET
 # ---------------------------------------------------
- 
+
 cancer = load_breast_cancer()
- 
+
 X = pd.DataFrame(
     cancer.data,
     columns=cancer.feature_names
 )
- 
+
 y = pd.Series(cancer.target)
- 
+
 # ---------------------------------------------------
 # DATASET OVERVIEW
 # ---------------------------------------------------
- 
+
 st.header("📂 Dataset Overview")
- 
+
 col1, col2 = st.columns(2)
- 
+
 with col1:
-    st.subheader("Features Dataset (First 5 Rows)")
+    st.subheader("Features Dataset")
     st.dataframe(X.head())
- 
+
 with col2:
-    st.subheader("Target Dataset (First 5 Rows)")
-    st.dataframe(y.head().rename("diagnosis"))
- 
+    st.subheader("Target Dataset")
+    st.dataframe(y.head())
+
 st.write("### Dataset Shape")
 st.write("Features Shape:", X.shape)
 st.write("Target Shape:", y.shape)
- 
+
 # ---------------------------------------------------
-# DATA VISUALIZATION - BOXPLOT
+# DATA VISUALIZATION
 # ---------------------------------------------------
- 
+
 st.header("📊 Data Visualization")
- 
-st.subheader("Boxplot of First 10 Features")
- 
+
 fig1, ax1 = plt.subplots(figsize=(15, 6))
+
 sns.boxplot(data=X.iloc[:, :10], ax=ax1)
-plt.xticks(rotation=45, ha='right')
-plt.tight_layout()
+
+plt.xticks(rotation=90)
+
 st.pyplot(fig1)
-plt.close(fig1)
- 
+
 # ---------------------------------------------------
 # TRAIN TEST SPLIT
 # ---------------------------------------------------
- 
+
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
     test_size=0.2,
     random_state=42
 )
- 
+
 # ---------------------------------------------------
-# MODEL CREATION & TRAINING
+# FEATURE SCALING (Important for SVC)
 # ---------------------------------------------------
- 
-st.header("🤖 Decision Tree Model Training")
- 
-model = DecisionTreeClassifier(
-    criterion='gini',
-    max_depth=5,
+
+scaler = StandardScaler()
+
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ---------------------------------------------------
+# MODEL CREATION - SVC
+# ---------------------------------------------------
+
+st.header("🤖 Support Vector Classifier (SVC) Model")
+
+st.info("ℹ️ **Note:** Feature scaling (StandardScaler) is applied before training SVC for better performance.")
+
+model = SVC(
+    kernel='rbf',
+    C=1.0,
+    gamma='scale',
+    probability=True,
     random_state=42
 )
- 
-model.fit(X_train, y_train)
- 
-st.success("✅ Model trained successfully!")
- 
+
+# Train Model
+model.fit(X_train_scaled, y_train)
+
 # ---------------------------------------------------
 # MODEL PREDICTIONS
 # ---------------------------------------------------
- 
-y_pred = model.predict(X_test)
- 
+
+y_pred = model.predict(X_test_scaled)
+
+# Accuracy
 accuracy = accuracy_score(y_test, y_pred)
- 
+
 # ---------------------------------------------------
-# MODEL PERFORMANCE METRICS
+# MODEL PERFORMANCE
 # ---------------------------------------------------
- 
+
 st.header("📈 Model Performance")
- 
+
 col1, col2, col3 = st.columns(3)
- 
+
 with col1:
-    st.metric("Accuracy", f"{accuracy * 100:.2f}%")
- 
+    st.metric("Accuracy", f"{accuracy:.2f}")
+
 with col2:
     st.metric("Training Samples", len(X_train))
- 
+
 with col3:
     st.metric("Testing Samples", len(X_test))
- 
+
 # ---------------------------------------------------
 # CONFUSION MATRIX
 # ---------------------------------------------------
- 
+
 st.subheader("Confusion Matrix")
- 
+
 cm = confusion_matrix(y_test, y_pred)
- 
+
 fig2, ax2 = plt.subplots(figsize=(6, 4))
+
 sns.heatmap(
     cm,
     annot=True,
     fmt='d',
     cmap='Blues',
-    xticklabels=['Malignant', 'Benign'],
-    yticklabels=['Malignant', 'Benign'],
+    xticklabels=cancer.target_names,
+    yticklabels=cancer.target_names,
     ax=ax2
 )
+
 plt.xlabel("Predicted")
 plt.ylabel("Actual")
-plt.title("Confusion Matrix")
-plt.tight_layout()
+
 st.pyplot(fig2)
-plt.close(fig2)
- 
+
 # ---------------------------------------------------
 # CLASSIFICATION REPORT
 # ---------------------------------------------------
- 
+
 st.subheader("Classification Report")
- 
+
 report = classification_report(
     y_test,
     y_pred,
-    target_names=['Malignant', 'Benign'],
+    target_names=cancer.target_names,
     output_dict=True
 )
- 
+
 report_df = pd.DataFrame(report).transpose()
-st.dataframe(report_df.style.format("{:.2f}"))
- 
+
+st.dataframe(report_df)
+
 # ---------------------------------------------------
-# DECISION TREE VISUALIZATION
+# SVC MODEL DETAILS
 # ---------------------------------------------------
- 
-st.header("🌳 Decision Tree Visualization")
- 
-fig3, ax3 = plt.subplots(figsize=(20, 10))
- 
-tree.plot_tree(
-    model,
-    filled=True,
-    feature_names=list(cancer.feature_names),
-    class_names=list(cancer.target_names),
-    fontsize=8,
-    ax=ax3
-)
- 
-plt.tight_layout()
-st.pyplot(fig3)
-plt.close(fig3)
- 
+
+st.subheader("ℹ️ SVC Model Details")
+
+model_details = pd.DataFrame({
+    "Parameter": ["Kernel", "C (Regularization)", "Gamma", "Probability"],
+    "Value": ["RBF (Radial Basis Function)", "1.0", "scale", "True"]
+})
+
+st.dataframe(model_details)
+
 # ---------------------------------------------------
 # USER INPUT SECTION
 # ---------------------------------------------------
- 
+
 st.header("🔍 Predict Breast Cancer")
- 
-st.write("Enter the feature values below (default values are dataset averages):")
- 
+
+st.write("Enter the feature values below:")
+
 input_data = []
- 
+
 col1, col2 = st.columns(2)
- 
+
 for i, feature in enumerate(cancer.feature_names):
- 
+
     mean_value = float(X[feature].mean())
- 
+
     if i % 2 == 0:
+
         with col1:
+
             value = st.number_input(
-                label=str(feature),
+                feature,
                 value=mean_value,
-                format="%.4f",
-                key=f"feature_{i}"
+                format="%.4f"
             )
+
     else:
+
         with col2:
+
             value = st.number_input(
-                label=str(feature),
+                feature,
                 value=mean_value,
-                format="%.4f",
-                key=f"feature_{i}"
+                format="%.4f"
             )
- 
+
     input_data.append(value)
- 
+
 # ---------------------------------------------------
 # PREDICTION BUTTON
 # ---------------------------------------------------
- 
-if st.button("🔬 Predict Cancer Type"):
- 
+
+if st.button("Predict Cancer Type"):
+
     input_array = np.array(input_data).reshape(1, -1)
- 
-    prediction = model.predict(input_array)
-    probability = model.predict_proba(input_array)
- 
-    st.subheader("🎯 Prediction Result")
- 
+
+    # Scale the input using the same scaler used during training
+    input_array_scaled = scaler.transform(input_array)
+
+    prediction = model.predict(input_array_scaled)
+
+    probability = model.predict_proba(input_array_scaled)
+
+    st.subheader("Prediction Result")
+
     if prediction[0] == 0:
+
         st.error("⚠️ Malignant Cancer Detected")
-        st.write("The model predicts this sample is **Malignant** (Cancerous).")
+
     else:
+
         st.success("✅ Benign Cancer Detected")
-        st.write("The model predicts this sample is **Benign** (Non-Cancerous).")
- 
+
+    # Probability Table
     st.write("### Prediction Probability")
- 
+
     prob_df = pd.DataFrame({
         "Class": ["Malignant", "Benign"],
-        "Probability": [f"{p:.4f}" for p in probability[0]],
-        "Percentage": [f"{p * 100:.2f}%" for p in probability[0]]
+        "Probability": probability[0]
     })
- 
-    st.dataframe(prob_df, use_container_width=True)
- 
-    # Probability bar chart
-    fig4, ax4 = plt.subplots(figsize=(6, 3))
-    bars = ax4.bar(
-        ['Malignant', 'Benign'],
-        probability[0],
-        color=['#e74c3c', '#2ecc71'],
-        edgecolor='white',
-        linewidth=1.5
-    )
-    ax4.set_ylim(0, 1)
-    ax4.set_ylabel("Probability")
-    ax4.set_title("Prediction Probability")
-    for bar, prob in zip(bars, probability[0]):
-        ax4.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height() + 0.02,
-            f"{prob:.2%}",
-            ha='center',
-            fontweight='bold'
-        )
-    plt.tight_layout()
-    st.pyplot(fig4)
-    plt.close(fig4)
- 
+
+    st.dataframe(prob_df)
+
 # ---------------------------------------------------
 # FOOTER
 # ---------------------------------------------------
- 
+
 st.markdown("---")
- 
+
 st.markdown(
     """
     <center>
-        <h4>Developed using Streamlit &amp; Scikit-Learn | Breast Cancer Dataset</h4>
+        <h4>
+            Developed using Streamlit & Scikit-Learn | SVC Model
+        </h4>
     </center>
     """,
     unsafe_allow_html=True
 )
- 
